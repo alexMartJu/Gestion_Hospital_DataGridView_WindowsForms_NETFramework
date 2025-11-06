@@ -57,7 +57,7 @@ namespace GestorHospitalario
             }
 
             //Validación de fechas: la fecha de alta no puede ser anterior a la de ingreso
-            if (chkAlta.Checked && dtpAlta.Value < dtpIngreso.Value)
+            if (chkAlta.Checked && dtpAlta.Value.Date < dtpIngreso.Value.Date)
             {
                 MessageBox.Show("La fecha de alta no puede ser anterior a la fecha de ingreso.");
                 datosValidos = false;

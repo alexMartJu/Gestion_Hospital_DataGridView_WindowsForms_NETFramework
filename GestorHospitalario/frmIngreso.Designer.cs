@@ -39,6 +39,7 @@
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.btnCerrarToolStrip = new System.Windows.Forms.ToolStripButton();
             this.panelIngreso = new System.Windows.Forms.Panel();
+            this.lblInfo = new System.Windows.Forms.Label();
             this.txtEspecialidad = new System.Windows.Forms.TextBox();
             this.txtHabitacion = new System.Windows.Forms.TextBox();
             this.txtMotivo = new System.Windows.Forms.TextBox();
@@ -51,7 +52,6 @@
             this.lblMotivo = new System.Windows.Forms.Label();
             this.lblFechaAlta = new System.Windows.Forms.Label();
             this.lblFechaIngreso = new System.Windows.Forms.Label();
-            this.lblInfo = new System.Windows.Forms.Label();
             this.menuStripIngreso.SuspendLayout();
             this.toolStripIngreso.SuspendLayout();
             this.panelIngreso.SuspendLayout();
@@ -162,6 +162,17 @@
             this.panelIngreso.Size = new System.Drawing.Size(484, 371);
             this.panelIngreso.TabIndex = 4;
             // 
+            // lblInfo
+            // 
+            this.lblInfo.Font = new System.Drawing.Font("Segoe UI", 15.75F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblInfo.ForeColor = System.Drawing.Color.DarkSlateGray;
+            this.lblInfo.Location = new System.Drawing.Point(36, 30);
+            this.lblInfo.Name = "lblInfo";
+            this.lblInfo.Size = new System.Drawing.Size(407, 30);
+            this.lblInfo.TabIndex = 12;
+            this.lblInfo.Text = "Formulario de ingreso hospitalario";
+            this.lblInfo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // txtEspecialidad
             // 
             this.txtEspecialidad.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -201,6 +212,7 @@
             // dtpAlta
             // 
             this.dtpAlta.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.dtpAlta.Format = System.Windows.Forms.DateTimePickerFormat.Short;
             this.dtpAlta.Location = new System.Drawing.Point(41, 157);
             this.dtpAlta.Name = "dtpAlta";
             this.dtpAlta.Size = new System.Drawing.Size(260, 25);
@@ -209,6 +221,7 @@
             // dtpIngreso
             // 
             this.dtpIngreso.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.dtpIngreso.Format = System.Windows.Forms.DateTimePickerFormat.Short;
             this.dtpIngreso.Location = new System.Drawing.Point(41, 104);
             this.dtpIngreso.Name = "dtpIngreso";
             this.dtpIngreso.Size = new System.Drawing.Size(260, 25);
@@ -278,17 +291,6 @@
             this.lblFechaIngreso.Size = new System.Drawing.Size(111, 17);
             this.lblFechaIngreso.TabIndex = 0;
             this.lblFechaIngreso.Text = "Fecha de ingreso:";
-            // 
-            // lblInfo
-            // 
-            this.lblInfo.Font = new System.Drawing.Font("Segoe UI", 15.75F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblInfo.ForeColor = System.Drawing.Color.DarkSlateGray;
-            this.lblInfo.Location = new System.Drawing.Point(36, 30);
-            this.lblInfo.Name = "lblInfo";
-            this.lblInfo.Size = new System.Drawing.Size(407, 30);
-            this.lblInfo.TabIndex = 12;
-            this.lblInfo.Text = "Formulario de ingreso hospitalario";
-            this.lblInfo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // frmIngreso
             // 
