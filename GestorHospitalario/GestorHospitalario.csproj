@@ -34,6 +34,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -70,8 +71,8 @@
     <Compile Include="frmPaciente.Designer.cs">
       <DependentUpon>frmPaciente.cs</DependentUpon>
     </Compile>
-    <Compile Include="Ingreso.cs" />
-    <Compile Include="Paciente.cs" />
+    <Compile Include="IngresoDAL.cs" />
+    <Compile Include="PacienteDAL.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Form1.resx">

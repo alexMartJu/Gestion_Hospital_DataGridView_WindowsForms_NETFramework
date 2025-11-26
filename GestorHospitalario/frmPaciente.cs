@@ -12,55 +12,97 @@ namespace GestorHospitalario
 {
     public partial class frmPaciente : Form
     {
-        //Propiedad pública para acceder al paciente creado o editado
-        public Paciente Paciente { get; private set; }
+        //Variable para guardar el id del paciente (puede ser nulo si es nuevo)
+        private int? pacienteId;
+        //Objeto para hablar con la base de datos de pacientes
+        private PacienteDAL pacienteDAL = new PacienteDAL();
 
-        //Constructor para agregar un nuevo paciente
-        public frmPaciente()
+        //Constructor del formulario
+        //Si no se pasa id, se usa para crear un paciente nuevo
+        //Si se pasa id, se usa para editar un paciente existente
+        public frmPaciente(int? id = null)
         {
             InitializeComponent();
-            Paciente = new Paciente(); //Creamos un nuevo paciente vacío
+            pacienteId = id;
+            if (id.HasValue) //Si hay id, cargamos los datos del paciente
+            {
+                CargarPaciente(id.Value);
+            }
+            
+                
         }
 
-        //Constructor para editar un paciente existente
-        public frmPaciente(Paciente paciente)
+        //CargarPaciente() --> Método para cargar los datos de un paciente en los cuadros de texto
+        private void CargarPaciente(int id)
         {
-            InitializeComponent();
-            Paciente = paciente; //Guardamos el paciente recibido
-            //Mostramos sus datos en los campos del formulario
-            txtNombre.Text = paciente.Nombre;
-            txtApellidos.Text = paciente.Apellidos;
-            txtEdad.Text = paciente.Edad.ToString();
+            try
+            {
+                var dt = pacienteDAL.ObtenerTodos(); //Pedimos todos los pacientes a la DAL
+                foreach (DataRow row in dt.Rows) //Recorremos cada fila
+                {
+                    if ((int)row["Id"] == id) //Si el id coincide con el que buscamos
+                    {
+                        txtNombre.Text = row["Nombre"].ToString();
+                        txtApellidos.Text = row["Apellidos"].ToString();
+                        txtEdad.Text = row["Edad"].ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al cargar paciente: " + ex.Message);
+            }
         }
 
-
-        //Lógica Separada
         //GuardarPaciente() --> Método para guardar los datos del paciente
         private void GuardarPaciente()
         {
-            //Validamos que los campos estén completos y que la edad sea válida
-            if (!string.IsNullOrWhiteSpace(txtNombre.Text) &&
-                !string.IsNullOrWhiteSpace(txtApellidos.Text) &&
-                int.TryParse(txtEdad.Text, out int edad))
+            bool esValido = Validar(); //Comprobamos que los datos sean correctos
+
+            if (esValido)
             {
-                if (edad <= 0 || edad > 120)
+                try
                 {
-                    MessageBox.Show("La edad debe estar entre 0 y 120 años.");
-                    return;
+                    if (pacienteId.HasValue) //Si existe id, actualizamos el paciente
+                    {
+                        pacienteDAL.Actualizar(pacienteId.Value, txtNombre.Text, txtApellidos.Text, int.Parse(txtEdad.Text));
+                    }
+                    else //Si no existe id, insertamos un paciente nuevo
+                    {
+                        pacienteDAL.Insertar(txtNombre.Text, txtApellidos.Text, int.Parse(txtEdad.Text));
+                    }
+
+                    //Cerramos el formulario indicando que todo salió bien
+                    DialogResult = DialogResult.OK;
+                    Close();
                 }
-
-                //Asignamos los valores al objeto paciente
-                Paciente.Nombre = txtNombre.Text;
-                Paciente.Apellidos = txtApellidos.Text;
-                Paciente.Edad = edad;
-
-                DialogResult = DialogResult.OK; //Indicamos que se guardó correctamente
-                Close(); //Cerramos el formulario
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error al guardar paciente: " + ex.Message);
+                }
             }
-            else
+        }
+
+        //Validar() --> Método para comprobar que los datos introducidos son correctos
+        private bool Validar()
+        {
+            //Comprobamos que nombre y apellidos no estén vacíos y que edad sea un número
+            if (string.IsNullOrWhiteSpace(txtNombre.Text) ||
+                string.IsNullOrWhiteSpace(txtApellidos.Text) ||
+                !int.TryParse(txtEdad.Text, out int edad))
             {
                 MessageBox.Show("Completa todos los campos correctamente.");
+                return false;
             }
+
+            //Comprobamos que la edad esté en un rango lógico (0 a 120 años)
+            if (edad <= 0 || edad > 120)
+            {
+                MessageBox.Show("La edad debe estar entre 0 y 120 años.");
+                return false;
+            }
+
+            return true; //Si todo está bien, devolvemos true
         }
 
 

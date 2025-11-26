@@ -12,83 +12,131 @@ namespace GestorHospitalario
 {
     public partial class frmIngreso : Form
     {
-        //Propiedad pública para acceder al ingreso creado o editado
-        public Ingreso Ingreso { get; private set; }
-        private Paciente paciente;
+        //Guardamos el id del paciente al que pertenece este ingreso
+        private int pacienteId;
+        //Guardamos el id del ingreso (puede ser nulo si es un ingreso nuevo)
+        private int? ingresoId;
+        //Objeto para hablar con la base de datos de ingresos
+        private IngresoDAL ingresoDAL = new IngresoDAL();
 
-        //Constructor para agregar un nuevo ingreso
-        public frmIngreso()
+        //Constructor del formulario
+        //Si no se pasa ingresoId, se usa para crear un ingreso nuevo
+        //Si se pasa ingresoId, se usa para editar un ingreso existente
+        public frmIngreso(int pacienteId, int? ingresoId = null)
         {
             InitializeComponent();
-            Ingreso = new Ingreso(); //Creamos un ingreso vacío
+            this.pacienteId = pacienteId;
+            this.ingresoId = ingresoId;
+            if (ingresoId.HasValue) //Si hay id, cargamos los datos
+            {
+                CargarIngreso(ingresoId.Value);
+            }
+            else
+            {
+                //Ingreso nuevo: el checkbox desmarcado y el DateTimePicker deshabilitado
+                chkAlta.Checked = false;
+                dtpAlta.Enabled = false;
+            }
+
         }
 
-        //Constructor para editar un ingreso existente
-        public frmIngreso(Ingreso ingreso, Paciente paciente)
+        //CargarIngreso() --> Método para cargar los datos de un ingreso en los controles del formulario
+        private void CargarIngreso(int id)
         {
-            InitializeComponent();
-            this.paciente = paciente;
-            Ingreso = ingreso; //Guardamos el ingreso recibido
-            //Mostramos sus datos en los controles del formulario
-            dtpIngreso.Value = ingreso.FechaIngreso;
-            dtpAlta.Value = ingreso.FechaAlta ?? DateTime.Today;
-            txtMotivo.Text = ingreso.Motivo;
-            txtHabitacion.Text = ingreso.Habitacion;
-            txtEspecialidad.Text = ingreso.Especialidad;
-            chkAlta.Checked = ingreso.FechaAlta.HasValue;
-            dtpAlta.Enabled = chkAlta.Checked;
+            try
+            {
+                var dt = ingresoDAL.ObtenerPorPaciente(pacienteId); //Pedimos los ingresos del paciente a la DAL
+                foreach (DataRow row in dt.Rows) //Recorremos cada fila
+                {
+                    if ((int)row["Id"] == id) //Si el id coincide con el que buscamos
+                    {
+
+                        //Mostramos la fecha de ingreso
+                        dtpIngreso.Value = Convert.ToDateTime(row["FechaIngreso"]);
+                        //Si tiene fecha de alta, la mostramos y habilitamos el control
+                        if (row["FechaAlta"] != DBNull.Value)
+                        {
+                            chkAlta.Checked = true;
+                            dtpAlta.Value = Convert.ToDateTime(row["FechaAlta"]);
+                            dtpAlta.Enabled = true;
+                        }
+                        else
+                        {
+                            //Si no tiene fecha de alta, deshabilitamos el control
+                            chkAlta.Checked = false;
+                            dtpAlta.Enabled = false;
+                        }
+                        //Mostramos el resto de datos en los cuadros de texto
+                        txtMotivo.Text = row["Motivo"].ToString();
+                        txtHabitacion.Text = row["Habitacion"].ToString();
+                        txtEspecialidad.Text = row["Especialidad"].ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al cargar ingreso: " + ex.Message);
+            }
         }
 
 
-        //Lógica Separada
         //GuardarIngreso() --> Método para guardar los datos del ingreso
         private void GuardarIngreso()
         {
-            //Variable de control para saber si los datos son válidos
-            bool datosValidos = true;
+            bool esValido = Validar(); //Comprobamos que los datos sean correctos
 
-            //Validación de campos obligatorios: motivo, habitación y especialidad
+            if (esValido)
+            {
+                try
+                {
+                    DateTime? fechaAlta = chkAlta.Checked ? dtpAlta.Value : (DateTime?)null;
+
+                    if (ingresoId.HasValue) //Si existe id, actualizamos el ingreso
+                    {
+                        if (!chkAlta.Checked && ingresoDAL.ExisteIngresoActivo(pacienteId, ingresoId))
+                        {
+                            MessageBox.Show("Este paciente ya tiene otro ingreso activo. No puedes dejar este ingreso sin fecha de alta.");
+                            return;
+                        }
+                        ingresoDAL.Actualizar(ingresoId.Value, dtpIngreso.Value, fechaAlta,
+                                              txtMotivo.Text, txtHabitacion.Text, txtEspecialidad.Text);
+                    }
+                    else //Si no existe id, insertamos un ingreso nuevo
+                    {
+                        ingresoDAL.Insertar(dtpIngreso.Value, fechaAlta,
+                                            txtMotivo.Text, txtHabitacion.Text, txtEspecialidad.Text, pacienteId);
+                    }
+
+                    DialogResult = DialogResult.OK;
+                    Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error al guardar ingreso: " + ex.Message);
+                }
+            }
+        }
+
+        //Validar() --> Método para comprobar que los datos introducidos son correctos
+        private bool Validar()
+        {
+            //Comprobamos que motivo, habitación y especialidad no estén vacíos
             if (string.IsNullOrWhiteSpace(txtMotivo.Text) ||
                 string.IsNullOrWhiteSpace(txtHabitacion.Text) ||
                 string.IsNullOrWhiteSpace(txtEspecialidad.Text))
             {
                 MessageBox.Show("Completa todos los campos obligatorios.");
-                datosValidos = false;
+                return false;
             }
 
-            //Validación de fechas: la fecha de alta no puede ser anterior a la de ingreso
+            //Comprobamos que la fecha de alta no sea anterior a la fecha de ingreso
             if (chkAlta.Checked && dtpAlta.Value.Date < dtpIngreso.Value.Date)
             {
                 MessageBox.Show("La fecha de alta no puede ser anterior a la fecha de ingreso.");
-                datosValidos = false;
+                return false;
             }
 
-            //Validación de ingresos activos:
-            //Si el paciente existe, el ingreso actual tiene fecha de alta,
-            //pero el checkbox de alta está desmarcado (se quiere quitar la fecha),
-            //y el paciente ya tiene otro ingreso sin fecha de alta (activo),
-            //entonces no se permite quitar la fecha de alta del ingreso actual.
-            if (paciente != null &&
-                Ingreso.FechaAlta.HasValue &&
-                !chkAlta.Checked &&
-                paciente.Ingresos.Any(i => i != Ingreso && !i.FechaAlta.HasValue))
-            {
-                MessageBox.Show("Este paciente ya tiene otro ingreso activo. No puedes quitar la fecha de alta.");
-                datosValidos = false;
-            }
-
-            //Si todas las validaciones pasaron, se guardan los datos en el objeto Ingreso
-            if (datosValidos)
-            {
-                Ingreso.FechaIngreso = dtpIngreso.Value;
-                Ingreso.FechaAlta = chkAlta.Checked ? dtpAlta.Value : (DateTime?)null;
-                Ingreso.Motivo = txtMotivo.Text;
-                Ingreso.Habitacion = txtHabitacion.Text;
-                Ingreso.Especialidad = txtEspecialidad.Text;
-
-                DialogResult = DialogResult.OK;
-                Close();
-            }
+            return true; //Si todo está bien, devolvemos true
         }
 
 

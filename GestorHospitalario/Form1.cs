@@ -12,113 +12,78 @@ namespace GestorHospitalario
 {
     public partial class frmPrincipal : Form
     {
-        //Lista donde guardamos todos los pacientes
-        private List<Paciente> pacientes = new List<Paciente>();
-        //Contador para asignar un ID único a cada paciente
-        private int contadorId = 1;
+        //Creamos los objetos que nos permiten hablar con la base de datos
+        private PacienteDAL pacienteDAL = new PacienteDAL();
+        private IngresoDAL ingresoDAL = new IngresoDAL();
 
         public frmPrincipal()
         {
             InitializeComponent();
         }
 
-        //Cuando se carga el formulario, añadimos algunos pacientes de ejemplo
+        //Cuando se abre el formulario principal, cargamos la lista de pacientes
         private void frmPrincipal_Load(object sender, EventArgs e)
         {
-            pacientes.Add(new Paciente
-            {
-                Id = contadorId++,
-                Nombre = "Alex",
-                Apellidos = "Martinez Juan",
-                Edad = 25,
-                Ingresos = new List<Ingreso>
-                {
-                    new Ingreso { Id = 1, FechaIngreso = DateTime.Today.AddDays(-10), FechaAlta = DateTime.Today.AddDays(-5), Motivo = "Dolor abdominal", Habitacion = "101A", Especialidad = "Gastroenterología" },
-                    new Ingreso { Id = 2, FechaIngreso = DateTime.Today.AddDays(-3), FechaAlta = null, Motivo = "Observación", Habitacion = "102B", Especialidad = "Medicina Interna" }
-                }
-            });
-
-            pacientes.Add(new Paciente
-            {
-                Id = contadorId++,
-                Nombre = "Juanjo",
-                Apellidos = "Juan Mira",
-                Edad = 26,
-                Ingresos = new List<Ingreso>
-                {
-                    new Ingreso { Id = 1, FechaIngreso = DateTime.Today.AddDays(-7), FechaAlta = DateTime.Today.AddDays(-2), Motivo = "Fractura de tobillo", Habitacion = "201C", Especialidad = "Traumatología" }
-                }
-            });
-            if (pacientes.Count > 0)
-            {
-                RefrescarPacientes(); //Actualizamos la tabla de pacientes
-            }
-            
+            RefrescarPacientes();
         }
 
-        //RefrescarPacientes() --> Método para actualizar el DataGridView con la lista de pacientes
+        //RefrescarPacientes() --> Método para actualizar el DataGridView con los pacientes de la base de datos
         private void RefrescarPacientes()
         {
-            dgvPacientes.DataSource = null;
-            dgvPacientes.DataSource = pacientes;
-            ActualizarEstadisticas();
+            try
+            {
+                dgvPacientes.DataSource = pacienteDAL.ObtenerTodos(); //Pedimos todos los pacientes a la DAL
+                ActualizarEstadisticas();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al refrescar pacientes: " + ex.Message);
+            }
         }
 
         //ActualizarEstadisticas() --> Método para calcular y mostrar las estadísticas generales del hospital
         private void ActualizarEstadisticas()
         {
-            int totalPacientes = pacientes.Count; //Cantidad total de pacientes registrados
-            int sumaEdades = 0; //Suma de todas las edades para calcular la media
-            int totalIngresos = 0; //Cantidad total de ingresos registrados
-            int ingresosActivos = 0; //Cantidad de ingresos que aún no tienen fecha de alta
-
-            //Recorremos todos los pacientes
-            foreach (Paciente p in pacientes)
+            try
             {
-                sumaEdades += p.Edad; //Sumamos la edad de cada paciente
-                totalIngresos += p.Ingresos.Count; //Sumamos la cantidad de ingresos de cada paciente
+                var pacientes = pacienteDAL.ObtenerTodos();
+                var ingresos = ingresoDAL.ObtenerTodos();
 
-                //Contamos cuántos ingresos están activos (sin fecha de alta)
-                foreach (Ingreso i in p.Ingresos)
-                {
-                    if (!i.FechaAlta.HasValue)
-                    {
-                        ingresosActivos++;
-                    }
-                }
+                int totalPacientes = pacientes.Rows.Count;
+                double edadMedia = totalPacientes > 0 ? Convert.ToDouble(pacientes.Compute("AVG(Edad)", "")) : 0;
+                int totalIngresos = ingresos.Rows.Count;
+                int ingresosActivos = ingresos.Select("FechaAlta IS NULL").Length;
+
+                lblValorPacientes.Text = totalPacientes.ToString();
+                lblValorEdadMedia.Text = edadMedia.ToString("0.0");
+                lblValorIngresos.Text = totalIngresos.ToString();
+                lblValorActivos.Text = ingresosActivos.ToString();
             }
-
-            //Calculamos la edad media (evitamos división por cero)
-            double edadMedia = totalPacientes > 0 ? (double)sumaEdades / totalPacientes : 0;
-            //Mostramos los valores en los labels correspondientes
-            lblValorPacientes.Text = totalPacientes.ToString();
-            lblValorEdadMedia.Text = edadMedia.ToString("0.0");
-            lblValorIngresos.Text = totalIngresos.ToString();
-            lblValorActivos.Text = ingresosActivos.ToString();
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al calcular estadísticas: " + ex.Message);
+            }
         }
 
-        //Lógica Separada
-        //AgregarPaciente() --> Método para agregar un nuevo paciente
+        //AgregarPaciente() --> Método para abrir el formulario de paciente para añadir uno nuevo
         private void AgregarPaciente()
         {
-            var form = new frmPaciente(); //Abrimos el formulario de paciente
+            var form = new frmPaciente();
             if (form.ShowDialog() == DialogResult.OK)
             {
-                form.Paciente.Id = contadorId++; //Asignamos un ID
-                pacientes.Add(form.Paciente);    //Lo añadimos a la lista
-                RefrescarPacientes();
+                RefrescarPacientes(); //Actualizamos la lista después de añadir
             }
         }
 
-        //EditarPaciente() --> Método para editar un paciente seleccionado
+        //EditarPaciente() --> Método para abrir el formulario de paciente para modificar uno existente
         private void EditarPaciente()
         {
             //Verificamos si hay una fila seleccionada en el DataGridView
             if (dgvPacientes.CurrentRow != null)
             {
-                //Obtenemos el objeto Paciente que está vinculado a esa fila
-                var paciente = (Paciente)dgvPacientes.CurrentRow.DataBoundItem;
-                var form = new frmPaciente(paciente); //Le pasamos el paciente
+                //Obtenemos el Id del paciente que el usuario ha seleccionado en el DataGridView
+                int id = Convert.ToInt32(dgvPacientes.CurrentRow.Cells["Id"].Value);
+                var form = new frmPaciente(id); //Le pasamos el paciente
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     RefrescarPacientes();
@@ -130,17 +95,24 @@ namespace GestorHospitalario
             }
         }
 
-        //EliminarPaciente() --> Método para eliminar un paciente
+        //EliminarPaciente() --> Método para eliminar un paciente y sus ingresos asociados
         private void EliminarPaciente()
         {
             if (dgvPacientes.CurrentRow != null)
             {
-                var paciente = (Paciente)dgvPacientes.CurrentRow.DataBoundItem;
+                int id = Convert.ToInt32(dgvPacientes.CurrentRow.Cells["Id"].Value);
                 var confirm = MessageBox.Show("¿Eliminar paciente?", "Confirmar", MessageBoxButtons.YesNo);
                 if (confirm == DialogResult.Yes)
                 {
-                    pacientes.Remove(paciente); //Lo quitamos de la lista
-                    RefrescarPacientes();
+                    try
+                    {
+                        pacienteDAL.Eliminar(id); //Llamamos a la DAL para borrar
+                        RefrescarPacientes();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error al eliminar paciente: " + ex.Message);
+                    }
                 }
             }
             else
@@ -149,15 +121,22 @@ namespace GestorHospitalario
             }
         }
 
-        //VerIngresos() --> Método para ver los ingresos de un paciente
+        //VerIngresos() --> Método para abrir el formulario de ingresos para ver los ingresos de un paciente
         private void VerIngresos()
         {
             if (dgvPacientes.CurrentRow != null)
             {
-                var paciente = (Paciente)dgvPacientes.CurrentRow.DataBoundItem;
-                var form = new frmIngresos(paciente);
-                form.ShowDialog();
-                RefrescarPacientes();
+                int id = Convert.ToInt32(dgvPacientes.CurrentRow.Cells["Id"].Value);
+                try
+                {
+                    var form = new frmIngresos(id);
+                    form.ShowDialog();
+                    RefrescarPacientes();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error al abrir ingresos: " + ex.Message);
+                }
             }
             else
             {

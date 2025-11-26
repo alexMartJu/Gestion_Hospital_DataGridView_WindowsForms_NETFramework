@@ -12,58 +12,60 @@ namespace GestorHospitalario
 {
     public partial class frmIngresos : Form
     {
-        //Guardamos el paciente actual para acceder a sus ingresos
-        private Paciente paciente;
+        //Guardamos el id del paciente al que pertenecen los ingresos
+        private int pacienteId;
+        //Objeto para hablar con la base de datos de ingresos
+        private IngresoDAL ingresoDAL = new IngresoDAL();
 
-        //Constructor vacío (no se usa en este caso)
-        public frmIngresos()
+        //Constructor del formulario
+        //Recibe el id del paciente y carga sus ingresos
+        public frmIngresos(int id)
         {
             InitializeComponent();
-        }
-
-        //Constructor que recibe el paciente y muestra sus ingresos
-        public frmIngresos(Paciente paciente)
-        {
-            InitializeComponent();
-            this.paciente = paciente;
-            lblPaciente.Text = $"{paciente.Nombre} {paciente.Apellidos} - {paciente.Edad} años"; //Mostramos el nombre y edad
-            //Cargamos los ingresos en la tabla
-            if (paciente.Ingresos.Count > 0)
-            {
-                RefrescarIngresos();
-            }
+            pacienteId = id;
+            RefrescarIngresos();
         }
 
         //RefrescarIngresos() --> Método para actualizar el DataGridView con los ingresos del paciente
         private void RefrescarIngresos()
         {
-            dgvIngresos.DataSource = null;
-            dgvIngresos.DataSource = paciente.Ingresos;
+            try
+            {
+                dgvIngresos.DataSource = ingresoDAL.ObtenerPorPaciente(pacienteId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al refrescar ingresos: " + ex.Message);
+            }
         }
 
 
-        //Lógica Separada
         //AgregarIngreso() --> Método para agregar un nuevo ingreso
         private void AgregarIngreso()
         {
             bool puedeAgregar = true;
 
-            //Validación: evitar múltiples ingresos activos
-            if (paciente.Ingresos.Any(i => !i.FechaAlta.HasValue))
+            try
             {
-                MessageBox.Show("Este paciente ya tiene un ingreso activo. Debe darse de alta antes de agregar otro.");
-                puedeAgregar = false;
-            }
-
-            if (puedeAgregar)
-            {
-                var form = new frmIngreso(); //Abrimos el formulario de ingreso
-                if (form.ShowDialog() == DialogResult.OK)
+                //Validación: evitar múltiples ingresos activos
+                if (ingresoDAL.ExisteIngresoActivo(pacienteId))
                 {
-                    form.Ingreso.Id = paciente.Ingresos.Count + 1; //Asignamos ID
-                    paciente.Ingresos.Add(form.Ingreso); //Lo añadimos a la lista
-                    RefrescarIngresos(); //Actualizamos la tabla
+                    MessageBox.Show("Este paciente ya tiene un ingreso activo. Debe darse de alta antes de agregar otro.");
+                    puedeAgregar = false;
                 }
+
+                if (puedeAgregar)
+                {
+                    var form = new frmIngreso(pacienteId); //Abrimos el formulario de ingreso
+                    if (form.ShowDialog() == DialogResult.OK)
+                    {
+                        RefrescarIngresos(); //Actualizamos la tabla
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al agregar ingreso: " + ex.Message);
             }
         }
 
@@ -72,11 +74,18 @@ namespace GestorHospitalario
         {
             if (dgvIngresos.CurrentRow != null)
             {
-                var ingreso = (Ingreso)dgvIngresos.CurrentRow.DataBoundItem;
-                var form = new frmIngreso(ingreso,paciente); //Le pasamos el ingreso
-                if (form.ShowDialog() == DialogResult.OK)
+                int id = Convert.ToInt32(dgvIngresos.CurrentRow.Cells["Id"].Value);
+                try
                 {
-                    RefrescarIngresos(); //Actualizamos la tabla
+                    var form = new frmIngreso(pacienteId, id);
+                    if (form.ShowDialog() == DialogResult.OK)
+                    {
+                        RefrescarIngresos(); //Actualizamos la tabla
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error al editar ingreso: " + ex.Message);
                 }
             }
             else
@@ -90,12 +99,19 @@ namespace GestorHospitalario
         {
             if (dgvIngresos.CurrentRow != null)
             {
-                var ingreso = (Ingreso)dgvIngresos.CurrentRow.DataBoundItem;
+                int id = Convert.ToInt32(dgvIngresos.CurrentRow.Cells["Id"].Value);
                 var confirm = MessageBox.Show("¿Eliminar ingreso?", "Confirmar", MessageBoxButtons.YesNo);
                 if (confirm == DialogResult.Yes)
                 {
-                    paciente.Ingresos.Remove(ingreso); //Lo quitamos de la lista
-                    RefrescarIngresos(); //Actualizamos la tabla
+                    try
+                    {
+                        ingresoDAL.Eliminar(id); //Llamamos a la DAL para borrar el ingreso
+                        RefrescarIngresos(); //Actualizamos la tabla
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error al eliminar ingreso: " + ex.Message);
+                    }
                 }
             }
             else
